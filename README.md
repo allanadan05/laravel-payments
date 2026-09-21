@@ -197,6 +197,38 @@ app(\Payments\PaymentManager::class)
 
 No changes needed to `PaymentManager`, the facade, or any calling code.
 
+## Roadmap
+
+Planned drivers, in priority order:
+
+1. **Stripe** — closest 1:1 fit to the existing contract; PaymentIntents,
+   Subscriptions, Webhooks, and SetupIntents map directly onto
+   `PaymentGateway` and all five optional capability interfaces.
+2. **PayMongo** — Stripe-shaped API (PaymentIntents-style flow) that also
+   happens to be the practical way to accept **GCash** and **Maya** in
+   the Philippines, since it aggregates both under one integration
+   instead of needing a separate driver per wallet.
+3. **Maya (PayMaya)** — direct integration for merchants who want Maya as
+   a primary gateway rather than going through PayMongo. Supports
+   `charge`/webhooks; no native equivalent of Stripe/Braintree's
+   subscription or stored-payment-method vaulting yet, so it likely
+   won't implement `SupportsSubscriptions` or
+   `SupportsStoredPaymentMethods` at first.
+4. **PayPal** — standalone REST API integration for merchants who don't
+   want to route PayPal through Braintree. Billing agreements back
+   `SupportsSubscriptions`; webhooks map cleanly.
+
+**Not planned as `PaymentGateway` drivers:**
+
+- **GCash** — no stable direct merchant API for third-party integration;
+  only reachable through aggregators like PayMongo. Covered indirectly
+  once that driver lands.
+- **Wise**, **Payoneer** — cross-border transfer / mass-payout platforms,
+  not "charge a customer" gateways. They have no real equivalent of
+  `ChargeRequest`/`RefundResult`, so forcing them behind this contract
+  would be a leaky abstraction. A separate payout-oriented contract
+  would be the right shape if these are ever added.
+
 ## Testing
 
 If you have PHP + Composer installed locally:
