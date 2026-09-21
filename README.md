@@ -218,17 +218,6 @@ Planned drivers, in priority order:
    want to route PayPal through Braintree. Billing agreements back
    `SupportsSubscriptions`; webhooks map cleanly.
 
-**Not planned as `PaymentGateway` drivers:**
-
-- **GCash** — no stable direct merchant API for third-party integration;
-  only reachable through aggregators like PayMongo. Covered indirectly
-  once that driver lands.
-- **Wise**, **Payoneer** — cross-border transfer / mass-payout platforms,
-  not "charge a customer" gateways. They have no real equivalent of
-  `ChargeRequest`/`RefundResult`, so forcing them behind this contract
-  would be a leaky abstraction. A separate payout-oriented contract
-  would be the right shape if these are ever added.
-
 ## Testing
 
 If you have PHP + Composer installed locally:
