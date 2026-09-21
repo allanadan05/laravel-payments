@@ -13,8 +13,12 @@ not a rewrite of your controllers.
 
 - **Gateway-agnostic contract** — controllers/jobs depend on `PaymentGateway`,
   never a concrete driver.
-- **Bundled Braintree driver** — charge, refund, void, and vault customers
-  out of the box.
+- **Bundled Braintree driver** — charge, refund, void, vault customers,
+  subscriptions, webhooks, stored payment methods, and reporting.
+- **Optional capability interfaces** — subscriptions, webhooks, etc. stay
+  out of the core contract so simpler drivers aren't forced to implement
+  them; check with `instanceof` (see [Optional
+  capabilities](#optional-capabilities)).
 - **Facade or dependency injection** — use `Payment::gateway()` or inject
   `PaymentGateway` directly.
 - **Typed data transfer objects** for requests/results instead of loose
@@ -119,6 +123,65 @@ public function __construct(private PaymentGateway $gateway) {}
 
 (Bind `PaymentGateway::class` to `Payment::gateway()` in a service provider
 if you want constructor injection app-wide.)
+
+## Optional capabilities
+
+Not every gateway supports subscriptions, webhooks, etc., so those live
+outside the core `PaymentGateway` contract as separate, optional
+interfaces. `BraintreeGateway` implements all of them; a driver for a
+simpler provider can skip any it doesn't support. Check with `instanceof`
+before calling:
+
+```php
+use Payments\Contracts\SupportsSubscriptions;
+
+$gateway = Payment::gateway();
+
+if ($gateway instanceof SupportsSubscriptions) {
+    $gateway->subscribe(/* ... */);
+}
+```
+
+| Interface | Methods | Purpose |
+|---|---|---|
+| `SupportsSubscriptions` | `subscribe()`, `findSubscription()`, `updateSubscription()`, `cancelSubscription()` | Recurring billing |
+| `SupportsWebhooks` | `verifyWebhook()`, `parseWebhook()` | Handle async gateway events |
+| `SupportsStoredPaymentMethods` | `addPaymentMethod()`, `listPaymentMethods()`, `defaultPaymentMethod()`, `deletePaymentMethod()` | Manage a customer's vaulted cards/accounts |
+| `SupportsReporting` | `findTransaction()`, `searchTransactions()` | Look up / search past transactions |
+| `SupportsCustomerListing` | `findCustomer()`, `listCustomers()` | Look up / list vaulted customers |
+
+```php
+use Payments\DataTransferObjects\SubscriptionRequest;
+
+// Subscriptions — paymentMethodToken is a *stored* token, not a one-time nonce
+$result = Payment::gateway()->subscribe(SubscriptionRequest::make(
+    planId: 'monthly_plan',
+    paymentMethodToken: $customer->braintree_payment_method_token,
+));
+
+// Webhooks — in the controller handling your gateway's webhook URL
+$event = Payment::gateway()->parseWebhook($request->input('bt_signature'), $request->input('bt_payload'));
+match ($event->kind) {
+    'subscription_canceled' => /* ... */,
+    default => null,
+};
+
+// Stored payment methods
+$methods = Payment::gateway()->listPaymentMethods($customer->braintree_id);
+Payment::gateway()->deletePaymentMethod($token);
+
+// Reporting
+$transactions = Payment::gateway()->searchTransactions(['customer_id' => $customer->braintree_id]);
+
+// Customer listing
+$customers = Payment::gateway()->listCustomers(['email' => 'jane@example.com']);
+```
+
+`searchTransactions()` and `listCustomers()` take a flat criteria array;
+`BraintreeGateway` supports exact-match lookups on a fixed set of keys
+(see the docblocks on `searchTransactions()`/`listCustomers()` in
+`src/Gateways/BraintreeGateway.php`) and throws on unknown keys rather
+than silently ignoring them.
 
 ## Adding another gateway
 
