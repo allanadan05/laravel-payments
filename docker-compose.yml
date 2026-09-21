@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    working_dir: /app
+    volumes:
+      - .:/app
+    # Keeps the container's composer cache off your host and out of the
+    # package directory (faster reinstalls, and it won't show up in git).
+    tty: true

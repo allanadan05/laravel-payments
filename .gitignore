@@ -1,0 +1,8 @@
+/vendor/
+/.phpunit.cache/
+.phpunit.result.cache
+composer.lock
+.DS_Store
+.env
+.vscode/markdown-live-index.json
+.vscode/markdown-live-recent.json
